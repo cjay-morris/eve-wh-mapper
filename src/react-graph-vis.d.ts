@@ -4,8 +4,7 @@ declare module "react-graph-vis" {
   
     export { Network, NetworkEvents, Options, Node, Edge, DataSet } from "vis";
   
-    export type graphEvents = Record<NetworkEvents, (params?: unknown) => void>;
-  
+    export type graphEvents = Record<string, (event: { nodes: number[]; edges: number[] }) => void>;
     //Doesn't appear that this module supports passing in a vis.DataSet directly. Once it does graph can just use the Data object from vis.
     export interface graphData {
       nodes: Node[];

@@ -43,6 +43,14 @@ export default function GraphComp({ className }: GraphProps) {
       <Graph
         graph={graph}
         options={options}
+        events={{
+          select: (event) => {
+            // TODO: open modal with location info, delete, edit options etc
+            const { nodes, edges } = event;
+            console.log("Selected nodes:", nodes);
+            console.log("Selected edges:", edges);
+          },
+        }}
       />
     </div>
   );
