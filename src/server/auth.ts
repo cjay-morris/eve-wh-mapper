@@ -3,6 +3,7 @@ import {
   type DefaultSession,
   type NextAuthOptions,
 } from "next-auth";
+import { type JWT } from "next-auth/jwt";
 import EVEOnlineProvider from "next-auth/providers/eveonline";
 
 import { env } from "~/env";
@@ -17,11 +18,47 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
       id: string;
+      image: string;
+      name: string;
     } & DefaultSession["user"];
     accessToken: string;
+    error?: string;
   }
-
 }
+
+const refreshAccessToken = async (token: JWT) => {
+  try {
+    const response = await fetch('https://login.eveonline.com/v2/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from(`${env.EVE_CLIENT_ID}:${env.EVE_CLIENT_SECRET}`).toString('base64')}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken as string,
+      }),
+    });
+    if (!response.ok) {
+      console.log('Failed to refresh access token', response.status, await response.text());
+      throw new Error('Failed to refresh access token');
+    }
+    const refreshedToken = await response.json() as { access_token: string, expires_in: number, refresh_token: string };
+
+    return {
+      ...token,
+      accessToken: refreshedToken.access_token,
+      accessTokenExpires: (Date.now() / 1000) + refreshedToken.expires_in,
+      refreshToken: refreshedToken.refresh_token ?? token.refreshToken,
+    }
+  } catch (error) {
+    console.error('Failed to refresh access token:', error);
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    }
+  }
+};
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -33,22 +70,32 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account, user }) {
       // initial sign in
       if (account && user) return {
-          ...token,
           accessToken: account.access_token,
+          accessTokenExpires: account.expires_at ? account.expires_at : Date.now(),
           refreshToken: account.refresh_token,
-          username: account.providerAccountId,
+          id: user.id,
+          name: user.name,
+          image: user.image,
       }
 
-      // sign in
-      if (token) return token
-
-      // sign out
-      return {}
+      // if the token has less than 4 minutes left, refresh it
+      if (Date.now() < (token.accessTokenExpires as number - 240) * 1000) {
+        console.log('Access token still valid', token.accessTokenExpires);
+        return token
+      }
+      const newToken = await refreshAccessToken(token);
+      return newToken
   },
 
   async session({ session, token }) {
-    session.accessToken = token.accessToken as string;
-    session.user.id = token.username as string;
+    if (token) {
+      const typedToken = token as { accessToken: string; error?: string; id: string; image: string; name: string };
+      session.accessToken = typedToken.accessToken;
+      session.error = typedToken.error;
+      session.user.id = typedToken.id;
+      session.user.image = typedToken.image;
+      session.user.name = typedToken.name;
+    }
     return session
   }
   },

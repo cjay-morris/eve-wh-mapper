@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useLocationContext } from '~/context/LocationProvider';
 
 interface Signature {
     id: string;
-    type: string;
+    type?: string;
     strength?: string;
 }
 
@@ -17,7 +18,7 @@ const parseSignatures = (signatureString: string) => {
         const parts = line.split('\t');
         sigs.push({
             id: parts[0] ?? 'Unknown',
-            type: parts[3] ?? 'Unknown',
+            type: parts[3],
         });
     })
     return sigs
@@ -26,6 +27,7 @@ const parseSignatures = (signatureString: string) => {
 export default function SignatureInput() {
   const { data: session } = useSession()
   const [sigDump, setSigDump] = useState('')
+  const { currentLocation } = useLocationContext()
 
   const submitSigsToApi = async (sigs: Signature[]) => {
     try {
@@ -34,7 +36,7 @@ export default function SignatureInput() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sigs, system: 'Sooma' }),
+        body: JSON.stringify({ sigs, system: currentLocation }),
       });
 
       const data = await res.json() as { success: boolean };
@@ -62,10 +64,10 @@ export default function SignatureInput() {
       <textarea
         value={sigDump}
         onChange={(e) => setSigDump(e.target.value)}
-        placeholder="Signature dump here"
-        className="mr-2 p-2 border rounded w-full"
+        placeholder="Paste your signature dump here"
+        className="mr-2 p-2 border w-full bg-amarr-primary text-amarr-secondary p-4 rounded resize-none h-48"
       />
-      <button type="button" className="p-2 bg-blue-500 text-white rounded" onClick={printSignature}>
+      <button type="button" className="p-2 bg-amarr-secondary text-amarr-primary rounded" onClick={printSignature}>
         Add Signatures
       </button>
     </form>

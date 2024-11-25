@@ -12,7 +12,7 @@ interface SystemAPIRes {
 const url = 'https://esi.evetech.net/latest'
 
 export const getLocation = async (session: Session | null) => {
-    if (!session) {
+    if (!session?.user.id || !session?.accessToken) {
         return "OOPS"
     }
     const res = await fetch((`${url}/characters/${session?.user.id}/location`), {

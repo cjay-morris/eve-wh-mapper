@@ -2,7 +2,7 @@ import "~/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Provider } from "../components/Provider";
-import { ChainProvider } from "~/context/ChainContextProvider";
+import { ChainProvider } from "~/context/LocationProvider";
 
 export const metadata: Metadata = {
   title: "Create T3 App",

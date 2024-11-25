@@ -14,7 +14,7 @@ Promise<NextResponse<
     try {
         const { searchParams } = new URL(req.url);
         const system = searchParams.get('system');
-        if (!system) {
+        if (!system || system === 'Unknown') {
             return NextResponse.json({ error: 'No system provided' }, { status: 400 });
         }
 
